@@ -60,8 +60,23 @@ public class HFImageNutritionService {
         ResponseEntity<String> predictionResponse =
                 restTemplate.exchange(step2Url, HttpMethod.GET, step2Entity, String.class);
 
-        System.out.println("FINAL HF RESPONSE: " + predictionResponse.getBody());
+        String raw = predictionResponse.getBody();
+        System.out.println("RAW SSE: " + raw);
 
-        return predictionResponse.getBody();
+        // Extract only the data lines (the actual JSON array)
+        String[] lines = raw.split("\\R");
+        StringBuilder dataPayload = new StringBuilder();
+
+        for (String line : lines) {
+            line = line.trim();
+            if (line.startsWith("data:")) {
+                dataPayload.append(line.substring(5).trim());
+            }
+        }
+
+        String finalJson = dataPayload.toString();
+        System.out.println("FINAL JSON = " + finalJson);
+
+        return finalJson;
     }
 }

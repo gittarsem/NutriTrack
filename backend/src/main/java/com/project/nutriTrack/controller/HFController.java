@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.project.nutriTrack.service.HFImageNutritionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,23 +19,35 @@ public class HFController {
     private final HFImageNutritionService hfService;
     private final Cloudinary cloudinary;
 
-    @PostMapping("/food")
-    public ResponseEntity<?> analyzeFood(@RequestPart("file") MultipartFile file) {
+    @PostMapping(value = "/food", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> analyzeFood(
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) {
         try {
-            System.out.println("📥 Received file: " + file.getOriginalFilename());
+            // Accept whichever key was sent: Render sometimes uses `file`.
+            MultipartFile input = (image != null) ? image : file;
 
-            // Upload to Cloudinary
+            if (input == null || input.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body("❌ No file received under 'image' or 'file'");
+            }
+
+            System.out.println("📥 Received file: " + input.getOriginalFilename());
+
+            // 1️⃣ Upload to Cloudinary
             Map uploadResult = cloudinary.uploader().upload(
-                    file.getBytes(),
+                    input.getBytes(),
                     ObjectUtils.asMap("folder", "nutriTrack_uploads")
             );
 
             String imageUrl = uploadResult.get("secure_url").toString();
             System.out.println("☁️ Cloudinary URL: " + imageUrl);
 
-            // Send URL to HF model
+            // 2️⃣ Analyze using HF model
             String hfResponse = hfService.analyzeFoodImage(imageUrl);
 
+            // 3️⃣ Return final JSON
             return ResponseEntity.ok(Map.of(
                     "imageUrl", imageUrl,
                     "prediction", hfResponse
@@ -43,7 +56,7 @@ public class HFController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500)
-                    .body("Server Error: " + e.getMessage());
+                    .body("❌ Server Error: " + e.getMessage());
         }
     }
 }
