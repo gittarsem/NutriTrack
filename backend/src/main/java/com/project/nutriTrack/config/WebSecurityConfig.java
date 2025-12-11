@@ -1,17 +1,17 @@
 package com.project.nutriTrack.config;
 
 import com.project.nutriTrack.security.AuthTokenFilter;
-import com.project.nutriTrack.security.AuthEntryPointJwt; // NEW: Import the Entry Point
+import com.project.nutriTrack.security.AuthEntryPointJwt;
 import com.project.nutriTrack.service.UserDetailsServiceImpl;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod; // NEW: Import HttpMethod
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,9 +46,9 @@ public class WebSecurityConfig {
 
         http
                 // 1. Disable CSRF (FIXES 403 on POST/LOGIN) and other defaults
-                .csrf(csrf -> csrf.disable())
-                .httpBasic(basic -> basic.disable())
-                .formLogin(form -> form.disable())
+                .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
 
                 // 2. Add Exception Handling for 401 Unauthorized
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
@@ -66,6 +66,8 @@ public class WebSecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/test/ping").permitAll()
                         .requestMatchers("/api/user/me").authenticated()
+                        .requestMatchers("/api/ml/**").permitAll()
+                        .requestMatchers("/api/upload-image").permitAll()
                         // Secure all other routes
                         .anyRequest().authenticated()
                 );

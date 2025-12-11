@@ -42,7 +42,7 @@ public class UserController {
             @RequestBody ProfileUpdateRequest request,
             Authentication authentication) {
 
-        String email = authentication.getName(); // Extract email from token
+        String email = authentication.getName();
 
         Optional<User> userData = userRepository.findByEmail(email);
 
@@ -52,7 +52,6 @@ public class UserController {
 
         User user = userData.get();
 
-        // Only update fields that are present (null-safe update)
         if (request.getName() != null) user.setName(request.getName());
         if (request.getWeight() != null) user.setWeight(request.getWeight());
         if (request.getHeight() != null) user.setHeight(request.getHeight());
