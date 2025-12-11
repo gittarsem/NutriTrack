@@ -31,5 +31,11 @@ public class ProfileUpdateRequest {
     @NotBlank
     private String activityLevel;
 
+    @NotBlank
+    private Double age;
+
+    @NotBlank
+    private Double timesWeek;
+
 
 }

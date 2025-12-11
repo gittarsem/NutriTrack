@@ -12,4 +12,6 @@ public class UpdateProfileRequest {
     private String gender;
     private String dietaryPreference;
     private String activityLevel;
+    private Double age;
+    private Double timesWeek;
 }

@@ -63,7 +63,7 @@ public class AuthController {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             return ResponseEntity
                     .badRequest()
-                    .body(Map.of("message", "Error: Email is already taken!"));
+                    .body(Map.of("message", "I guess we already have relation!"));
         }
 
         // Create new user

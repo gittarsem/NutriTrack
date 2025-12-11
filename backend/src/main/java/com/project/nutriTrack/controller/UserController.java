@@ -17,9 +17,7 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
-    // -------------------------
-    // 1. GET PROFILE (for dashboard)
-    // -------------------------
+
     @GetMapping("/me")
     public ResponseEntity<?> getUserProfile(Authentication authentication) {
 
@@ -59,6 +57,8 @@ public class UserController {
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getDietaryPreference() != null) user.setDietaryPreference(request.getDietaryPreference());
         if (request.getActivityLevel() != null) user.setActivityLevel(request.getActivityLevel());
+        if(request.getTimesWeek()!=null) user.setTimesWeek(request.getTimesWeek());
+        if(request.getAge()!=null) user.setAge(request.getAge());
 
         userRepository.save(user);
 

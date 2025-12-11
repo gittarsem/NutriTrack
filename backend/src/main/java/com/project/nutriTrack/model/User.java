@@ -17,7 +17,9 @@ public class User {
     private Double height;
     private Double targetWeight;
     private String gender;
-    private String dietaryPreference; // vegetarian, non-veg, eggeterian
+    private String dietaryPreference;
     private String activityLevel;
+    private Double timesWeek;
+    private Double age;
 
 }

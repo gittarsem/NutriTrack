@@ -1,58 +1,67 @@
 package com.project.nutriTrack.service;
 
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.MediaType;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.multipart.MultipartFile;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class HFImageNutritionService {
 
-    private final WebClient webClient = WebClient.builder()
-            .baseUrl("https://srgv-diet-planner-nutrition.hf.space")
-            .build();
+    private final RestTemplate restTemplate = new RestTemplate();
 
-    public String analyzeFoodImage(MultipartFile image) throws IOException {
+    public String analyzeFoodImage(String imageUrl) {
 
-        MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
-        formData.add("image", new MultipartInputResource(image));
+        String step1Url = "https://srgv-diet-planner-nutrition.hf.space/gradio_api/call/predict";
 
-        return webClient.post()
-                .uri("/run/predict")
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(BodyInserters.fromMultipartData(formData))
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-    }
+        // Prepare JSON body
+        Map<String, Object> requestBody = Map.of(
+                "data", List.of(
+                        Map.of(
+                                "path", imageUrl,
+                                "meta", Map.of("_type", "gradio.FileData")
+                        )
+                )
+        );
 
-    // Converts MultipartFile → Resource for WebClient
-    public static class MultipartInputResource extends InputStreamResource {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
-        private final String filename;
-        private final long contentLength;
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        public MultipartInputResource(MultipartFile file) throws IOException {
-            super(file.getInputStream());
-            this.filename = file.getOriginalFilename();
-            this.contentLength = file.getSize();
+        // STEP 1 → POST → get event_id
+        String eventResponse = restTemplate.postForObject(step1Url, entity, String.class);
+        System.out.println("STEP 1 Response: " + eventResponse);
+
+        if (eventResponse == null || !eventResponse.contains("event_id")) {
+            return "Invalid HF response: " + eventResponse;
         }
 
-        @Override
-        public String getFilename() {
-            return this.filename;
-        }
+        // Extract event_id
+        String eventId = eventResponse.split(":")[1]
+                .replace("}", "")
+                .replace("\"", "")
+                .trim();
 
-        @Override
-        public long contentLength() {
-            return this.contentLength;
-        }
+        System.out.println("Event ID: " + eventId);
+
+        // STEP 2 → GET final prediction
+        String step2Url = "https://srgv-diet-planner-nutrition.hf.space/gradio_api/call/predict/" + eventId;
+
+        HttpHeaders step2Headers = new HttpHeaders();
+        step2Headers.setAccept(List.of(MediaType.TEXT_EVENT_STREAM));
+
+        HttpEntity<Void> step2Entity = new HttpEntity<>(step2Headers);
+
+        ResponseEntity<String> predictionResponse =
+                restTemplate.exchange(step2Url, HttpMethod.GET, step2Entity, String.class);
+
+        System.out.println("FINAL HF RESPONSE: " + predictionResponse.getBody());
+
+        return predictionResponse.getBody();
     }
 }
