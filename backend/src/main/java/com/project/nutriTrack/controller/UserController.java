@@ -1,12 +1,18 @@
 package com.project.nutriTrack.controller;
 
+import com.project.nutriTrack.dto.CalorieTargetRequest;
+import com.project.nutriTrack.dto.CalorieTargetResponse;
 import com.project.nutriTrack.dto.ProfileUpdateRequest;
 import com.project.nutriTrack.model.User;
 import com.project.nutriTrack.repository.UserRepository;
+import com.project.nutriTrack.service.CalorieTargetMLService;
+import com.project.nutriTrack.service.DailySummaryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 
@@ -17,12 +23,19 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CalorieTargetMLService calorieTargetMLService;
 
+    @Autowired
+    private DailySummaryService dailySummaryService;
+
+    // ------------------------------------
+    // GET USER PROFILE
+    // ------------------------------------
     @GetMapping("/me")
     public ResponseEntity<?> getUserProfile(Authentication authentication) {
 
-        String email = authentication.getName();  // JWT subject is email
-
+        String email = authentication.getName();
         Optional<User> userData = userRepository.findByEmail(email);
 
         if (userData.isEmpty()) {
@@ -32,16 +45,15 @@ public class UserController {
         return ResponseEntity.ok(userData.get());
     }
 
-    // -------------------------
-    // 2. UPDATE PROFILE
-    // -------------------------
+    // ------------------------------------
+    // UPDATE PROFILE + TRIGGER ML API
+    // ------------------------------------
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(
             @RequestBody ProfileUpdateRequest request,
             Authentication authentication) {
 
         String email = authentication.getName();
-
         Optional<User> userData = userRepository.findByEmail(email);
 
         if (userData.isEmpty()) {
@@ -57,11 +69,27 @@ public class UserController {
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getDietaryPreference() != null) user.setDietaryPreference(request.getDietaryPreference());
         if (request.getActivityLevel() != null) user.setActivityLevel(request.getActivityLevel());
-        if(request.getTimesWeek()!=null) user.setTimesWeek(request.getTimesWeek());
-        if(request.getAge()!=null) user.setAge(request.getAge());
+        if (request.getTimesWeek() != null) user.setTimesWeek(request.getTimesWeek());
+        if (request.getAge() != null) user.setAge(request.getAge());
 
         userRepository.save(user);
 
-        return ResponseEntity.ok("User profile updated successfully!");
+        CalorieTargetRequest mlReq = new CalorieTargetRequest();
+        mlReq.setAge(user.getAge());
+        mlReq.setWeight_kg(user.getWeight());
+        mlReq.setHeight_cm(user.getHeight());
+        mlReq.setGender(user.getGender());
+        mlReq.setActivity_level(user.getActivityLevel());
+        mlReq.setTarget_weight_kg(user.getTargetWeight());
+        mlReq.setTime_weeks(user.getTimesWeek());
+
+        // BLOCKING CALL – REQUIRED IN MVC
+        CalorieTargetResponse mlResponse =
+                calorieTargetMLService.getCalorieTarget(mlReq).block();
+
+        dailySummaryService.saveCalorieTarget(user.getId(), mlResponse);
+
+        return ResponseEntity.ok(mlResponse);
     }
+
 }

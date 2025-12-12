@@ -45,38 +45,39 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                // 1. Disable CSRF (FIXES 403 on POST/LOGIN) and other defaults
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
-
-                // 2. Add Exception Handling for 401 Unauthorized
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
-
-                // 3. Set Session Policy to Stateless (CRITICAL for JWT)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
-                        // CRITICAL FIX: Explicitly permit OPTIONS requests for CORS preflight
+                        // Allow CORS preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Permit public authentication and system error routes
+                        // Public routes
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/test/ping").permitAll()
+
+                        // Auth-required routes
                         .requestMatchers("/api/user/me").authenticated()
-                        .requestMatchers("/api/ml/**").permitAll()
-                        .requestMatchers("/api/upload-image").permitAll()
-                        // Secure all other routes
+                        .requestMatchers("/api/user/profile").authenticated()
+                        .requestMatchers("/api/meal/**").authenticated()
+                        .requestMatchers("/api/dashboard/**").authenticated()
+                        .requestMatchers("/api/ml/calorie-target").permitAll()
+                        .requestMatchers("/api/ml/weekly-update").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/api/ml/food").authenticated()
+                        // FINAL RULE — MUST BE LAST
                         .anyRequest().authenticated()
                 );
 
-        // Add the JWT Filter before Spring's default filter
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
 
 

@@ -14,15 +14,3 @@ public class CalorieTargetResponse {
     private Macros macros; // <-- Only calories + grams
 }
 
-@Data
-class Macros {
-    private MacroValue protein;
-    private MacroValue fat;
-    private MacroValue carbs;
-}
-
-@Data
-class MacroValue {
-    private double calories;
-    private double grams;
-}
