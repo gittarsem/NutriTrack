@@ -8,8 +8,10 @@ import com.project.nutriTrack.repository.UserRepository;
 import com.project.nutriTrack.service.CalorieTargetMLService;
 import com.project.nutriTrack.service.DailySummaryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import reactor.core.publisher.Mono;
@@ -29,6 +31,8 @@ public class UserController {
     @Autowired
     private DailySummaryService dailySummaryService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     // ------------------------------------
     // GET USER PROFILE
     // ------------------------------------
@@ -43,6 +47,21 @@ public class UserController {
         }
 
         return ResponseEntity.ok(userData.get());
+    }
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody User user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
+        }
+
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        // ADD THIS LINE HERE 👇👇👇
+        user.setUsername(user.getEmail().split("@")[0]);
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok("User registered successfully");
     }
 
     // ------------------------------------
